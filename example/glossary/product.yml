@@ -1,0 +1,48 @@
+model_version: 1
+domain: lending
+terms:
+  - id: term.product_code
+    name: Product code
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Stable identifier of a lending product. A loan points at one product
+      code. The product classifies the loan. Members do not enroll in a
+      product separately from the loan.
+    related_terms: [term.product_type, term.loan_id]
+
+  - id: term.product_name
+    name: Product name
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Business name of the lending product.
+
+  - id: term.product_type
+    name: Product type
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Family the product belongs to.
+    allowed_values: [unsecured_installment, auto_secured, line_of_credit]
+
+  - id: term.product_status
+    name: Product status
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Whether the institution currently offers the product. Retired products
+      remain on existing loans.
+    allowed_values: [active, retired]
+    excludes:
+      - Loan servicing status

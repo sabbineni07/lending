@@ -1,0 +1,89 @@
+# Landing file to the bronze member table. TAX_ID stays here and cites term.ssn.
+model_version: 1
+id: pipeline.bronze.member
+layer: bronze
+enabled: true
+verifies: dict.bronze.member
+depends_on: []
+dictionary_check:
+  ignore_columns: [_source_path, _file_checksum, _ingest_timestamp]
+sources:
+  - name: member_landing
+    format: parquet
+    path: landing/members/
+    attach_metadata: [_source_path, _file_checksum, _ingest_timestamp]
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.bronze
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: member_landed
+    sql: |
+      SELECT
+        cast(MEMBER_NBR AS string) AS MEMBER_NBR,
+        cast(AS_OF_DT AS string) AS AS_OF_DT,
+        cast(STATUS_CD AS string) AS STATUS_CD,
+        cast(OPEN_DT AS string) AS OPEN_DT,
+        cast(MEMBER_TYPE AS string) AS MEMBER_TYPE,
+        cast(TAX_ID AS string) AS TAX_ID,
+        _source_path,
+        _file_checksum,
+        _ingest_timestamp
+      FROM member_landing
+    dq:
+      - name: duplicate_member_snapshot
+        sql: |
+          SELECT landed.*
+          FROM member_landed AS landed
+          INNER JOIN (
+            SELECT MEMBER_NBR, AS_OF_DT
+            FROM member_landed
+            GROUP BY MEMBER_NBR, AS_OF_DT
+            HAVING count(*) > 1
+          ) AS duplicated
+            ON landed.MEMBER_NBR = duplicated.MEMBER_NBR
+           AND landed.AS_OF_DT = duplicated.AS_OF_DT
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_member
+  target:
+    name: lending.bronze.member_file
+    location: abfss://bronze@lendingexample.dfs.core.windows.net/member
+    format: delta
+    partition_by: [AS_OF_DT]
+  sql: |
+    INSERT INTO lending.bronze.member_file (
+      MEMBER_NBR,
+      AS_OF_DT,
+      STATUS_CD,
+      OPEN_DT,
+      MEMBER_TYPE,
+      TAX_ID,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    )
+    SELECT
+      MEMBER_NBR,
+      AS_OF_DT,
+      STATUS_CD,
+      OPEN_DT,
+      MEMBER_TYPE,
+      TAX_ID,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    FROM member_landed
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.bronze.member', current_timestamp()

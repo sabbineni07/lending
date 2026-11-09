@@ -1,0 +1,160 @@
+model_version: 1
+id: dict.bronze.loan
+layer: bronze
+entity: loan
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+landing: landing/loans/
+grain: one row per LOAN_NBR per AS_OF_DT in the loan extract
+primary_key: [LOAN_NBR, AS_OF_DT]
+population: Booked loans present on the servicing snapshot. Applications are absent.
+description: >
+  Daily loan snapshot as landed. Status and rate stay in source encoding.
+  Days past due is the contractual count from servicing.
+attributes:
+  - id: attr.bronze.loan.LOAN_NBR
+    name: LOAN_NBR
+    source_name: LOAN_NBR
+    definition: Loan identifier as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    representation: File value, unchanged.
+    examples: [L100, L2044]
+
+  - id: attr.bronze.loan.AS_OF_DT
+    name: AS_OF_DT
+    source_name: AS_OF_DT
+    definition: As-of date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Date stored as text in the file.
+    examples: ["2026-03-01"]
+
+  - id: attr.bronze.loan.MEMBER_NBR
+    name: MEMBER_NBR
+    source_name: MEMBER_NBR
+    definition: Primary obligor as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.primary_obligor
+    references: attr.bronze.member.MEMBER_NBR
+    representation: >
+      One member number per loan. Co-obligors and guarantors are not in this file.
+    examples: [M100]
+
+  - id: attr.bronze.loan.PRODUCT_CD
+    name: PRODUCT_CD
+    source_name: PRODUCT_CD
+    definition: Product code as received on the loan extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_code
+    references: attr.bronze.product.PRODUCT_CD
+    representation: File value, unchanged.
+    examples: [UNSEC01]
+
+  - id: attr.bronze.loan.STATUS_CD
+    name: STATUS_CD
+    source_name: STATUS_CD
+    definition: Loan status code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_status
+    representation: >
+      File codes A, D, C, and P. Business values current, delinquent,
+      charged_off, and paid_off are defined on term.loan_status.
+      This column keeps the file code.
+    examples: [A, D, C, P]
+
+  - id: attr.bronze.loan.PRIN_BAL
+    name: PRIN_BAL
+    source_name: PRIN_BAL
+    definition: Unpaid principal as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.principal_balance
+    representation: USD amount stored as text in the file.
+    examples: ["15420.33", "0.00"]
+
+  - id: attr.bronze.loan.NOTE_RATE
+    name: NOTE_RATE
+    source_name: NOTE_RATE
+    definition: Note rate as received on the extract, in percent.
+    logical_type: rate
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.interest_rate
+    representation: >
+      Percent encoding. 8.99 means an 8.99 percent note.
+      The business meaning is term.interest_rate.
+    examples: ["8.99", "0.00"]
+
+  - id: attr.bronze.loan.ORIG_AMT
+    name: ORIG_AMT
+    source_name: ORIG_AMT
+    definition: Original disbursed principal as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.original_amount
+    representation: USD amount stored as text in the file.
+    examples: ["20000.00"]
+
+  - id: attr.bronze.loan.NOTE_DT
+    name: NOTE_DT
+    source_name: NOTE_DT
+    definition: Origination date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.origination_date
+    representation: Date stored as text in the file.
+
+  - id: attr.bronze.loan.MATURITY_DT
+    name: MATURITY_DT
+    source_name: MATURITY_DT
+    definition: Maturity date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: true
+    sensitivity: internal
+    glossary_term: term.maturity_date
+    representation: >
+      Date stored as text. Null when the booked product has no contractual
+      maturity, such as an open line of credit.
+
+  - id: attr.bronze.loan.DPD_CNT
+    name: DPD_CNT
+    source_name: DPD_CNT
+    definition: Contractual days past due as received on the extract.
+    logical_type: count
+    physical_type: string
+    nullable: true
+    sensitivity: confidential
+    glossary_term: term.contractual_days_past_due
+    representation: >
+      Whole-day count stored as text. Zero when STATUS_CD is A.
+      Null when STATUS_CD is C or P.
+    examples: ["0", "15", "30"]

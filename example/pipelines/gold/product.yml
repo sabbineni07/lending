@@ -1,0 +1,62 @@
+# Grain change: many silver snapshots become one current product row.
+model_version: 1
+id: pipeline.gold.product
+layer: gold
+enabled: true
+verifies: dict.gold.product
+depends_on: [pipeline.silver.product]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: product_history
+    relation: lending.silver.product
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.gold
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: product_current
+    sql: |
+      SELECT
+        product_code,
+        product_name,
+        product_type,
+        product_status,
+        as_of_date AS source_as_of_date
+      FROM (
+        SELECT
+          product_history.*,
+          row_number() OVER (
+            PARTITION BY product_code
+            ORDER BY as_of_date DESC
+          ) AS _rn
+        FROM product_history
+      )
+      WHERE _rn = 1
+sink:
+  name: publish_product
+  target:
+    name: lending.gold.product
+    location: abfss://gold@lendingexample.dfs.core.windows.net/product
+    format: delta
+  sql: |
+    INSERT OVERWRITE lending.gold.product
+    SELECT
+      product_code,
+      product_name,
+      product_type,
+      product_status,
+      source_as_of_date
+    FROM product_current
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.gold.product', current_timestamp()

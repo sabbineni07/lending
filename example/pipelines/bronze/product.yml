@@ -1,0 +1,85 @@
+model_version: 1
+id: pipeline.bronze.product
+layer: bronze
+enabled: true
+verifies: dict.bronze.product
+depends_on: []
+dictionary_check:
+  ignore_columns: [_source_path, _file_checksum, _ingest_timestamp]
+sources:
+  - name: product_landing
+    format: parquet
+    path: landing/products/
+    attach_metadata: [_source_path, _file_checksum, _ingest_timestamp]
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.bronze
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: product_landed
+    sql: |
+      SELECT
+        cast(PRODUCT_CD AS string) AS PRODUCT_CD,
+        cast(AS_OF_DT AS string) AS AS_OF_DT,
+        cast(PRODUCT_NM AS string) AS PRODUCT_NM,
+        cast(PRODUCT_TYPE_CD AS string) AS PRODUCT_TYPE_CD,
+        cast(PRODUCT_STATUS_CD AS string) AS PRODUCT_STATUS_CD,
+        _source_path,
+        _file_checksum,
+        _ingest_timestamp
+      FROM product_landing
+    dq:
+      - name: duplicate_product_snapshot
+        sql: |
+          SELECT landed.*
+          FROM product_landed AS landed
+          INNER JOIN (
+            SELECT PRODUCT_CD, AS_OF_DT
+            FROM product_landed
+            GROUP BY PRODUCT_CD, AS_OF_DT
+            HAVING count(*) > 1
+          ) AS duplicated
+            ON landed.PRODUCT_CD = duplicated.PRODUCT_CD
+           AND landed.AS_OF_DT = duplicated.AS_OF_DT
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_product
+  target:
+    name: lending.bronze.product_file
+    location: abfss://bronze@lendingexample.dfs.core.windows.net/product
+    format: delta
+    partition_by: [AS_OF_DT]
+  sql: |
+    INSERT INTO lending.bronze.product_file (
+      PRODUCT_CD,
+      AS_OF_DT,
+      PRODUCT_NM,
+      PRODUCT_TYPE_CD,
+      PRODUCT_STATUS_CD,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    )
+    SELECT
+      PRODUCT_CD,
+      AS_OF_DT,
+      PRODUCT_NM,
+      PRODUCT_TYPE_CD,
+      PRODUCT_STATUS_CD,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    FROM product_landed
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.bronze.product', current_timestamp()

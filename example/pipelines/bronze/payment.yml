@@ -1,0 +1,92 @@
+model_version: 1
+id: pipeline.bronze.payment
+layer: bronze
+enabled: true
+verifies: dict.bronze.payment
+depends_on: []
+dictionary_check:
+  ignore_columns: [_source_path, _file_checksum, _ingest_timestamp]
+sources:
+  - name: payment_landing
+    format: parquet
+    path: landing/payments/
+    attach_metadata: [_source_path, _file_checksum, _ingest_timestamp]
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.bronze
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: payment_landed
+    sql: |
+      SELECT
+        cast(PMT_NBR AS string) AS PMT_NBR,
+        cast(LOAN_NBR AS string) AS LOAN_NBR,
+        cast(EFFECTIVE_DT AS string) AS EFFECTIVE_DT,
+        cast(PMT_AMT AS string) AS PMT_AMT,
+        cast(PRIN_AMT AS string) AS PRIN_AMT,
+        cast(INT_AMT AS string) AS INT_AMT,
+        cast(FEE_AMT AS string) AS FEE_AMT,
+        cast(PMT_TYPE_CD AS string) AS PMT_TYPE_CD,
+        _source_path,
+        _file_checksum,
+        _ingest_timestamp
+      FROM payment_landing
+    dq:
+      - name: duplicate_payment_id
+        sql: |
+          SELECT landed.*
+          FROM payment_landed AS landed
+          INNER JOIN (
+            SELECT PMT_NBR
+            FROM payment_landed
+            GROUP BY PMT_NBR
+            HAVING count(*) > 1
+          ) AS duplicated
+            ON landed.PMT_NBR = duplicated.PMT_NBR
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_payment
+  target:
+    name: lending.bronze.payment_file
+    location: abfss://bronze@lendingexample.dfs.core.windows.net/payment
+    format: delta
+  sql: |
+    INSERT INTO lending.bronze.payment_file (
+      PMT_NBR,
+      LOAN_NBR,
+      EFFECTIVE_DT,
+      PMT_AMT,
+      PRIN_AMT,
+      INT_AMT,
+      FEE_AMT,
+      PMT_TYPE_CD,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    )
+    SELECT
+      PMT_NBR,
+      LOAN_NBR,
+      EFFECTIVE_DT,
+      PMT_AMT,
+      PRIN_AMT,
+      INT_AMT,
+      FEE_AMT,
+      PMT_TYPE_CD,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    FROM payment_landed
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.bronze.payment', current_timestamp()

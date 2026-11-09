@@ -1,0 +1,111 @@
+model_version: 1
+domain: lending
+terms:
+  - id: term.payment_id
+    name: Payment identifier
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Identifier of one payment event assigned by servicing. A reversal or
+      an NSF is a different payment identifier. It does not reuse the
+      identifier of the payment it affects.
+    related_terms: [term.payment_effect, term.payment_reversal]
+
+  - id: term.payment_effective_date
+    name: Payment effective date
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Business date the payment posts to the loan.
+    excludes:
+      - File arrival time
+      - The as-of date of a loan snapshot
+    related_terms: [term.as_of_date]
+
+  - id: term.payment_amount
+    name: Payment amount
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Total amount of the payment event in USD. A posted payment is positive.
+      A reversal is negative. The total equals principal applied plus interest
+      applied plus fees applied.
+    related_terms:
+      - term.payment_principal_amount
+      - term.payment_interest_amount
+      - term.payment_fee_amount
+
+  - id: term.payment_principal_amount
+    name: Principal applied
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Portion of the payment event applied to principal, in USD.
+      A reversal carries a negative portion.
+    excludes:
+      - The unpaid principal balance of the loan
+    related_terms: [term.principal_balance, term.payment_amount]
+
+  - id: term.payment_interest_amount
+    name: Interest applied
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Portion of the payment event applied to interest, in USD.
+      A reversal carries a negative portion.
+
+  - id: term.payment_fee_amount
+    name: Fees applied
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Portion of the payment event applied to fees, in USD.
+      A reversal carries a negative portion.
+
+  - id: term.payment_effect
+    name: Payment effect
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: How the payment event changes the loan.
+    allowed_values: [posted, reversal, nsf]
+    excludes:
+      - Deleting or overwriting the original posted payment
+    related_terms: [term.payment_reversal, term.payment_amount]
+
+  - id: term.payment_reversal
+    name: Payment reversal
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [silver, gold]
+    definition: >
+      A payment event that undoes a prior posted payment. It has its own
+      payment identifier, payment effect reversal, and negative component
+      amounts.
+    includes:
+      - payment_effect = reversal
+    excludes:
+      - NSF events
+      - The original posted payment
+    related_terms: [term.payment_effect, term.payment_id]

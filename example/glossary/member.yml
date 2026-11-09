@@ -1,0 +1,110 @@
+model_version: 1
+domain: lending
+terms:
+  - id: term.member_id
+    name: Member identifier
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Stable identifier of a member of the institution. The same value
+      identifies that member on every extract and every as-of date.
+    excludes:
+      - Loan identifiers
+      - Application identifiers for people who never became members
+    related_terms: [term.primary_obligor, term.borrower_role]
+
+  - id: term.member_status
+    name: Member status
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Relationship status of the member on the as-of date.
+    allowed_values: [active, inactive, closed]
+    excludes:
+      - Loan servicing status. A member can be active while a loan is delinquent.
+    related_terms: [term.active_member]
+
+  - id: term.active_member
+    name: Active member
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [gold]
+    definition: A member whose member status is active on the as-of date.
+    includes:
+      - member_status = active
+    excludes:
+      - Inactive members
+      - Closed members
+    related_terms: [term.member_status]
+
+  - id: term.member_since_date
+    name: Member since date
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Calendar date the member relationship began.
+    excludes:
+      - The as-of date of a snapshot
+      - The date a specific loan was originated
+
+  - id: term.member_type
+    name: Member type
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Legal form of the member.
+    allowed_values: [individual, business]
+
+  - id: term.ssn
+    name: Social Security number
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze]
+    definition: >
+      US Social Security number of an individual member, as received on the
+      member extract. Restricted. Silver and gold attributes must not cite
+      this term.
+    excludes:
+      - Masked or tokenized substitutes
+      - Employer identification numbers of business members
+
+  - id: term.primary_obligor
+    name: Primary obligor
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      The member primarily responsible for repayment of a booked loan.
+      This term is one member per loan. It does not list co-obligors
+      or guarantors.
+    related_terms: [term.member_id, term.borrower_role]
+
+  - id: term.borrower_role
+    name: Borrower role
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [gold]
+    definition: >
+      The capacity in which a member is obligated on a booked loan.
+    allowed_values: [primary, co_obligor, guarantor]
+    excludes:
+      - The single primary-obligor column on the loan. That column cites
+        term.primary_obligor until the borrower-role dictionary is approved.
+    related_terms: [term.primary_obligor, term.member_id]

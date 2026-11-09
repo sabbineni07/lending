@@ -1,0 +1,111 @@
+model_version: 1
+id: dict.gold.payment
+layer: gold
+entity: payment
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per payment_id
+primary_key: [payment_id]
+population: >
+  Payment events published from silver, including reversals and NSF events.
+concepts:
+  - term.payment_reversal
+description: >
+  Published payment events. Amounts stay signed. A reversal remains its own
+  row under term.payment_reversal.
+attributes:
+  - id: attr.gold.payment.payment_id
+    name: payment_id
+    definition: Identifier of one payment event.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_id
+    representation: Carried from silver.payment_id unchanged.
+    examples: [PMT100, PMT100R]
+
+  - id: attr.gold.payment.loan_id
+    name: loan_id
+    definition: Booked loan the event applies to.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    references: attr.gold.loan.loan_id
+    representation: Carried from silver.loan_id unchanged.
+
+  - id: attr.gold.payment.payment_effective_date
+    name: payment_effective_date
+    definition: Business date the event posts to the loan.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.payment_effective_date
+    representation: Carried from silver.payment_effective_date unchanged.
+
+  - id: attr.gold.payment.payment_amount
+    name: payment_amount
+    definition: Total amount of the event in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_amount
+    rule: >
+      Equals payment_principal_amount + payment_interest_amount +
+      payment_fee_amount.
+    representation: Carried from silver.payment_amount unchanged.
+
+  - id: attr.gold.payment.payment_principal_amount
+    name: payment_principal_amount
+    definition: Portion applied to principal, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_principal_amount
+    representation: Carried from silver.payment_principal_amount unchanged.
+
+  - id: attr.gold.payment.payment_interest_amount
+    name: payment_interest_amount
+    definition: Portion applied to interest, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_interest_amount
+    representation: Carried from silver.payment_interest_amount unchanged.
+
+  - id: attr.gold.payment.payment_fee_amount
+    name: payment_fee_amount
+    definition: Portion applied to fees, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_fee_amount
+    representation: Carried from silver.payment_fee_amount unchanged.
+
+  - id: attr.gold.payment.payment_effect
+    name: payment_effect
+    definition: How the event changes the loan.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [posted, reversal, nsf]
+    sensitivity: confidential
+    glossary_term: term.payment_effect
+    representation: Carried from silver.payment_effect unchanged.
+    rule: >
+      payment_effect = reversal identifies a term.payment_reversal row
+      and requires payment_amount < 0.

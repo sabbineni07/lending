@@ -1,0 +1,129 @@
+# Function step plus a second source. dedupe_latest is not defined in this directory.
+model_version: 1
+id: pipeline.silver.loan
+layer: silver
+enabled: true
+verifies: dict.silver.loan
+depends_on: [pipeline.bronze.loan, pipeline.silver.member]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: loan_file
+    relation: lending.bronze.loan_file
+  - name: members
+    relation: lending.silver.member
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.silver
+  - name: ensure_quarantine_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.quarantine
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: loan_typed
+    sql: |
+      SELECT
+        trim(LOAN_NBR) AS loan_id,
+        to_date(AS_OF_DT, 'yyyy-MM-dd') AS as_of_date,
+        trim(MEMBER_NBR) AS member_id,
+        trim(PRODUCT_CD) AS product_code,
+        CASE STATUS_CD
+          WHEN 'A' THEN 'current'
+          WHEN 'D' THEN 'delinquent'
+          WHEN 'C' THEN 'charged_off'
+          WHEN 'P' THEN 'paid_off'
+        END AS loan_status,
+        cast(PRIN_BAL AS decimal(18,2)) AS principal_balance,
+        cast(cast(NOTE_RATE AS decimal(9,4)) / 100 AS decimal(7,6)) AS interest_rate,
+        cast(ORIG_AMT AS decimal(18,2)) AS original_amount,
+        to_date(NOTE_DT, 'yyyy-MM-dd') AS origination_date,
+        to_date(MATURITY_DT, 'yyyy-MM-dd') AS maturity_date,
+        cast(DPD_CNT AS int) AS contractual_days_past_due,
+        _ingest_timestamp
+      FROM loan_file
+    dq:
+      - name: unknown_loan_status
+        sql: |
+          SELECT *
+          FROM loan_typed
+          WHERE loan_id IS NULL
+             OR as_of_date IS NULL
+             OR member_id IS NULL
+             OR product_code IS NULL
+             OR loan_status IS NULL
+             OR principal_balance IS NULL
+             OR interest_rate IS NULL
+             OR original_amount IS NULL
+             OR origination_date IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_loan
+  - name: loan_ranked
+    function: lending.functions.dedupe_latest
+    input: loan_typed
+    args:
+      keys: [loan_id, as_of_date]
+      order_by: [_ingest_timestamp]
+      descending: true
+  - name: loan_ready
+    sql: |
+      SELECT
+        loan_id,
+        as_of_date,
+        member_id,
+        product_code,
+        loan_status,
+        principal_balance,
+        interest_rate,
+        original_amount,
+        origination_date,
+        maturity_date,
+        contractual_days_past_due
+      FROM loan_ranked
+    dq:
+      - name: days_past_due_by_status
+        sql: |
+          SELECT *
+          FROM loan_ready
+          WHERE (loan_status = 'current' AND coalesce(contractual_days_past_due, -1) <> 0)
+             OR (loan_status = 'delinquent' AND coalesce(contractual_days_past_due, 0) <= 0)
+             OR (loan_status IN ('charged_off', 'paid_off') AND contractual_days_past_due IS NOT NULL)
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_loan
+      - name: missing_member_snapshot
+        sql: |
+          SELECT loans.*
+          FROM loan_ready AS loans
+          LEFT JOIN members
+            ON loans.member_id = members.member_id
+           AND loans.as_of_date = members.as_of_date
+          WHERE members.member_id IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_loan
+sink:
+  name: publish_loan
+  target:
+    name: lending.silver.loan
+    location: abfss://silver@lendingexample.dfs.core.windows.net/loan
+    format: delta
+    partition_by: [as_of_date]
+  sql: |
+    MERGE INTO lending.silver.loan AS t
+    USING loan_ready AS s
+    ON t.loan_id = s.loan_id
+    AND t.as_of_date = s.as_of_date
+    WHEN MATCHED THEN UPDATE SET *
+    WHEN NOT MATCHED THEN INSERT *
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.silver.loan', current_timestamp()

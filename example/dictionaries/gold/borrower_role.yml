@@ -1,0 +1,60 @@
+model_version: 1
+id: dict.gold.borrower_role
+layer: gold
+entity: borrower_role
+domain: lending
+status: draft
+version: 0
+contact: contact.lending
+grain: one row per loan_id per member_id per as_of_date
+primary_key: [loan_id, member_id, as_of_date]
+population: >
+  Not approved. No landing file yet. Each obligated member on a booked loan
+  would appear once per as-of date.
+description: >
+  Draft dictionary for joint obligors and guarantors. Publish is blocked
+  while status is draft. dict.gold.loan.member_id continues to cite
+  term.primary_obligor for the single primary member.
+attributes:
+  - id: attr.gold.borrower_role.loan_id
+    name: loan_id
+    definition: Booked loan the member is obligated on.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    references: attr.gold.loan.loan_id
+
+  - id: attr.gold.borrower_role.member_id
+    name: member_id
+    definition: Member obligated on the loan.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.member_id
+    references: attr.gold.member.member_id
+
+  - id: attr.gold.borrower_role.as_of_date
+    name: as_of_date
+    definition: Business date this obligation snapshot describes.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+
+  - id: attr.gold.borrower_role.borrower_role
+    name: borrower_role
+    definition: Capacity in which the member is obligated on the loan.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [primary, co_obligor, guarantor]
+    sensitivity: confidential
+    glossary_term: term.borrower_role
+    rule: >
+      Exactly one row per loan and as-of date may have borrower_role = primary.
+      That member is the same member as dict.gold.loan.member_id.

@@ -1,0 +1,160 @@
+model_version: 1
+id: dict.gold.loan
+layer: gold
+entity: loan
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per loan_id per as_of_date
+primary_key: [loan_id, as_of_date]
+population: Booked loans published from silver. Applications are absent.
+description: >
+  Published loan snapshot for servicing and agent reads. Member is the
+  primary obligor only. Joint obligors wait on dict.gold.borrower_role,
+  which is still draft. The two delinquency flags are new meanings and
+  cite their own terms.
+attributes:
+  - id: attr.gold.loan.loan_id
+    name: loan_id
+    definition: Stable identifier of the booked loan.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    representation: Carried from silver.loan_id unchanged.
+    examples: [L100]
+
+  - id: attr.gold.loan.as_of_date
+    name: as_of_date
+    definition: Business date this loan snapshot describes.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Carried from silver.as_of_date unchanged.
+
+  - id: attr.gold.loan.member_id
+    name: member_id
+    definition: Member primarily responsible for repayment.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.primary_obligor
+    references: attr.gold.member.member_id
+    representation: Carried from silver.member_id unchanged.
+    examples: [M100]
+
+  - id: attr.gold.loan.product_code
+    name: product_code
+    definition: Product that classifies the loan.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_code
+    references: attr.gold.product.product_code
+    representation: Carried from silver.product_code unchanged.
+    examples: [UNSEC01]
+
+  - id: attr.gold.loan.loan_status
+    name: loan_status
+    definition: Servicing status of the loan on the as-of date.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [current, delinquent, charged_off, paid_off]
+    sensitivity: confidential
+    glossary_term: term.loan_status
+    representation: Carried from silver.loan_status unchanged.
+
+  - id: attr.gold.loan.principal_balance
+    name: principal_balance
+    definition: Unpaid principal on the as-of date, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.principal_balance
+    representation: Carried from silver.principal_balance unchanged.
+
+  - id: attr.gold.loan.interest_rate
+    name: interest_rate
+    definition: Nominal annual interest rate on the note, as a decimal fraction.
+    logical_type: rate
+    physical_type: decimal(7,6)
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.interest_rate
+    representation: Carried from silver.interest_rate unchanged.
+
+  - id: attr.gold.loan.original_amount
+    name: original_amount
+    definition: Principal disbursed when the loan was booked, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.original_amount
+    representation: Carried from silver.original_amount unchanged.
+
+  - id: attr.gold.loan.origination_date
+    name: origination_date
+    definition: Date the loan was booked.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.origination_date
+    representation: Carried from silver.origination_date unchanged.
+
+  - id: attr.gold.loan.maturity_date
+    name: maturity_date
+    definition: Date the final contractual payment is due.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: true
+    sensitivity: internal
+    glossary_term: term.maturity_date
+    representation: Carried from silver.maturity_date unchanged.
+
+  - id: attr.gold.loan.contractual_days_past_due
+    name: contractual_days_past_due
+    definition: Contractual days past due on the as-of date.
+    logical_type: count
+    physical_type: int
+    nullable: true
+    sensitivity: confidential
+    glossary_term: term.contractual_days_past_due
+    representation: Carried from silver.contractual_days_past_due unchanged.
+
+  - id: attr.gold.loan.is_delinquent
+    name: is_delinquent
+    definition: Whether the loan is a delinquent loan on the as-of date.
+    logical_type: indicator
+    physical_type: boolean
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.delinquent_loan
+    rule: true when loan_status = delinquent. Otherwise false.
+
+  - id: attr.gold.loan.is_delinquent_30_plus
+    name: is_delinquent_30_plus
+    definition: Whether the loan is 30 or more contractual days delinquent on the as-of date.
+    logical_type: indicator
+    physical_type: boolean
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.delinquent_30_plus
+    rule: >
+      true when loan_status = delinquent and contractual_days_past_due >= 30.
+      This attribute cites term.delinquent_30_plus. It does not cite
+      term.loan_status or term.delinquent_loan.

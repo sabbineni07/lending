@@ -1,0 +1,92 @@
+model_version: 1
+id: pipeline.silver.product
+layer: silver
+enabled: true
+verifies: dict.silver.product
+depends_on: [pipeline.bronze.product]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: product_file
+    relation: lending.bronze.product_file
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.silver
+  - name: ensure_quarantine_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.quarantine
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: product_typed
+    sql: |
+      SELECT
+        trim(PRODUCT_CD) AS product_code,
+        to_date(AS_OF_DT, 'yyyy-MM-dd') AS as_of_date,
+        trim(PRODUCT_NM) AS product_name,
+        CASE PRODUCT_TYPE_CD
+          WHEN 'UI' THEN 'unsecured_installment'
+          WHEN 'AS' THEN 'auto_secured'
+          WHEN 'LC' THEN 'line_of_credit'
+        END AS product_type,
+        CASE PRODUCT_STATUS_CD
+          WHEN 'A' THEN 'active'
+          WHEN 'R' THEN 'retired'
+        END AS product_status,
+        _ingest_timestamp
+      FROM product_file
+    dq:
+      - name: unknown_product_code
+        sql: |
+          SELECT *
+          FROM product_typed
+          WHERE product_code IS NULL
+             OR as_of_date IS NULL
+             OR product_name IS NULL
+             OR product_type IS NULL
+             OR product_status IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_product
+  - name: product_ready
+    sql: |
+      SELECT
+        product_code,
+        as_of_date,
+        product_name,
+        product_type,
+        product_status
+      FROM (
+        SELECT
+          product_typed.*,
+          row_number() OVER (
+            PARTITION BY product_code, as_of_date
+            ORDER BY _ingest_timestamp DESC
+          ) AS _rn
+        FROM product_typed
+      )
+      WHERE _rn = 1
+sink:
+  name: publish_product
+  target:
+    name: lending.silver.product
+    location: abfss://silver@lendingexample.dfs.core.windows.net/product
+    format: delta
+    partition_by: [as_of_date]
+  sql: |
+    MERGE INTO lending.silver.product AS t
+    USING product_ready AS s
+    ON t.product_code = s.product_code
+    AND t.as_of_date = s.as_of_date
+    WHEN MATCHED THEN UPDATE SET *
+    WHEN NOT MATCHED THEN INSERT *
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.silver.product', current_timestamp()

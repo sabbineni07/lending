@@ -1,0 +1,98 @@
+model_version: 1
+id: pipeline.gold.loan
+layer: gold
+enabled: true
+verifies: dict.gold.loan
+depends_on: [pipeline.silver.loan, pipeline.gold.member, pipeline.gold.product]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: loans
+    relation: lending.silver.loan
+  - name: members
+    relation: lending.gold.member
+  - name: products
+    relation: lending.gold.product
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.gold
+  - name: ensure_quarantine_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.quarantine
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: loan_ready
+    sql: |
+      SELECT
+        loan_id,
+        as_of_date,
+        member_id,
+        product_code,
+        loan_status,
+        principal_balance,
+        interest_rate,
+        original_amount,
+        origination_date,
+        maturity_date,
+        contractual_days_past_due,
+        coalesce(loan_status = 'delinquent', false) AS is_delinquent,
+        coalesce(loan_status = 'delinquent' AND contractual_days_past_due >= 30, false) AS is_delinquent_30_plus
+      FROM loans
+    dq:
+      - name: missing_published_member
+        sql: |
+          SELECT loans.*
+          FROM loan_ready AS loans
+          LEFT JOIN members
+            ON loans.member_id = members.member_id
+           AND loans.as_of_date = members.as_of_date
+          WHERE members.member_id IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.gold_loan
+      - name: missing_published_product
+        sql: |
+          SELECT loans.*
+          FROM loan_ready AS loans
+          LEFT JOIN products
+            ON loans.product_code = products.product_code
+          WHERE products.product_code IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.gold_loan
+      - name: delinquency_flags
+        sql: |
+          SELECT *
+          FROM loan_ready
+          WHERE is_delinquent <> coalesce(loan_status = 'delinquent', false)
+             OR is_delinquent_30_plus <> coalesce(
+               loan_status = 'delinquent' AND contractual_days_past_due >= 30,
+               false
+             )
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_loan
+  target:
+    name: lending.gold.loan
+    location: abfss://gold@lendingexample.dfs.core.windows.net/loan
+    format: delta
+    partition_by: [as_of_date]
+  sql: |
+    MERGE INTO lending.gold.loan AS t
+    USING loan_ready AS s
+    ON t.loan_id = s.loan_id
+    AND t.as_of_date = s.as_of_date
+    WHEN MATCHED THEN UPDATE SET *
+    WHEN NOT MATCHED THEN INSERT *
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.gold.loan', current_timestamp()

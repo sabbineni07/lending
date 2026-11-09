@@ -1,0 +1,92 @@
+model_version: 1
+id: dict.bronze.member
+layer: bronze
+entity: member
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+landing: landing/members/
+grain: one row per MEMBER_NBR per AS_OF_DT in the member extract
+primary_key: [MEMBER_NBR, AS_OF_DT]
+population: Members present on the servicing extract for that as-of date.
+description: >
+  Member extract as landed. Codes and the tax identifier stay in source form.
+attributes:
+  - id: attr.bronze.member.MEMBER_NBR
+    name: MEMBER_NBR
+    source_name: MEMBER_NBR
+    definition: Member identifier as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.member_id
+    representation: File value, unchanged.
+    examples: [M100, M2044]
+
+  - id: attr.bronze.member.AS_OF_DT
+    name: AS_OF_DT
+    source_name: AS_OF_DT
+    definition: As-of date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Date stored as text in the file.
+    examples: ["2026-03-01"]
+
+  - id: attr.bronze.member.STATUS_CD
+    name: STATUS_CD
+    source_name: STATUS_CD
+    definition: Member status code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.member_status
+    representation: >
+      File codes A, I, and C. Business values active, inactive, and closed
+      are defined on term.member_status. This column keeps the file code.
+    examples: [A, I, C]
+
+  - id: attr.bronze.member.OPEN_DT
+    name: OPEN_DT
+    source_name: OPEN_DT
+    definition: Member since date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.member_since_date
+    representation: Date stored as text in the file.
+
+  - id: attr.bronze.member.MEMBER_TYPE
+    name: MEMBER_TYPE
+    source_name: MEMBER_TYPE
+    definition: Member type code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.member_type
+    representation: >
+      File codes I and B. Business values individual and business are defined
+      on term.member_type. This column keeps the file code.
+    examples: [I, B]
+
+  - id: attr.bronze.member.TAX_ID
+    name: TAX_ID
+    source_name: TAX_ID
+    definition: Social Security number as received for an individual member.
+    logical_type: identifier
+    physical_type: string
+    nullable: true
+    sensitivity: restricted
+    glossary_term: term.ssn
+    representation: >
+      Present for individual members. Null for business members.
+      Silver and gold do not carry this attribute.

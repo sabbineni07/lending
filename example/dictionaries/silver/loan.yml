@@ -1,0 +1,146 @@
+model_version: 1
+id: dict.silver.loan
+layer: silver
+entity: loan
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per loan_id per as_of_date
+primary_key: [loan_id, as_of_date]
+population: Booked loans conformed from the bronze loan snapshot.
+description: >
+  Conformed loan snapshot. Status uses glossary values. The note rate is
+  stored as a decimal fraction of the same term the bronze file stores as
+  a percent. Delinquency flags are not created here.
+attributes:
+  - id: attr.silver.loan.loan_id
+    name: loan_id
+    definition: Stable identifier of the booked loan.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    representation: Trimmed LOAN_NBR.
+    examples: [L100]
+
+  - id: attr.silver.loan.as_of_date
+    name: as_of_date
+    definition: Business date this loan snapshot describes.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: AS_OF_DT parsed as a date.
+
+  - id: attr.silver.loan.member_id
+    name: member_id
+    definition: Member primarily responsible for repayment.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.primary_obligor
+    references: attr.silver.member.member_id
+    representation: Trimmed MEMBER_NBR. One member per loan.
+    examples: [M100]
+
+  - id: attr.silver.loan.product_code
+    name: product_code
+    definition: Product that classifies the loan.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_code
+    references: attr.silver.product.product_code
+    representation: Trimmed PRODUCT_CD.
+    examples: [UNSEC01]
+
+  - id: attr.silver.loan.loan_status
+    name: loan_status
+    definition: Servicing status of the loan on the as-of date.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [current, delinquent, charged_off, paid_off]
+    sensitivity: confidential
+    glossary_term: term.loan_status
+    representation: >
+      STATUS_CD A to current, D to delinquent, C to charged_off, P to paid_off.
+      Unknown codes are rejected.
+
+  - id: attr.silver.loan.principal_balance
+    name: principal_balance
+    definition: Unpaid principal on the as-of date, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.principal_balance
+    representation: PRIN_BAL parsed as a USD amount.
+    examples: ["15420.33", "0.00"]
+
+  - id: attr.silver.loan.interest_rate
+    name: interest_rate
+    definition: Nominal annual interest rate on the note.
+    logical_type: rate
+    physical_type: decimal(7,6)
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.interest_rate
+    representation: >
+      NOTE_RATE divided by 100. A file value of 8.99 is stored as 0.089900.
+      The term is unchanged.
+    examples: ["0.089900", "0.000000"]
+
+  - id: attr.silver.loan.original_amount
+    name: original_amount
+    definition: Principal disbursed when the loan was booked, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.original_amount
+    representation: ORIG_AMT parsed as a USD amount.
+
+  - id: attr.silver.loan.origination_date
+    name: origination_date
+    definition: Date the loan was booked.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.origination_date
+    representation: NOTE_DT parsed as a date.
+
+  - id: attr.silver.loan.maturity_date
+    name: maturity_date
+    definition: Date the final contractual payment is due.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: true
+    sensitivity: internal
+    glossary_term: term.maturity_date
+    representation: MATURITY_DT parsed as a date. Null when the file value is null.
+
+  - id: attr.silver.loan.contractual_days_past_due
+    name: contractual_days_past_due
+    definition: Contractual days past due on the as-of date.
+    logical_type: count
+    physical_type: int
+    nullable: true
+    sensitivity: confidential
+    glossary_term: term.contractual_days_past_due
+    representation: >
+      DPD_CNT parsed as a whole number. Required and zero when loan_status
+      is current. Required and greater than zero when loan_status is
+      delinquent. Null when loan_status is charged_off or paid_off.
+    examples: ["0", "15", "30"]

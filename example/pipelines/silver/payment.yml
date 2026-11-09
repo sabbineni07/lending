@@ -1,0 +1,124 @@
+model_version: 1
+id: pipeline.silver.payment
+layer: silver
+enabled: true
+verifies: dict.silver.payment
+depends_on: [pipeline.bronze.payment, pipeline.silver.loan]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: payment_file
+    relation: lending.bronze.payment_file
+  - name: loans
+    relation: lending.silver.loan
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.silver
+  - name: ensure_quarantine_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.quarantine
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: payment_typed
+    sql: |
+      SELECT
+        trim(PMT_NBR) AS payment_id,
+        trim(LOAN_NBR) AS loan_id,
+        to_date(EFFECTIVE_DT, 'yyyy-MM-dd') AS payment_effective_date,
+        cast(PMT_AMT AS decimal(18,2)) AS payment_amount,
+        cast(PRIN_AMT AS decimal(18,2)) AS payment_principal_amount,
+        cast(INT_AMT AS decimal(18,2)) AS payment_interest_amount,
+        cast(FEE_AMT AS decimal(18,2)) AS payment_fee_amount,
+        CASE PMT_TYPE_CD
+          WHEN 'P' THEN 'posted'
+          WHEN 'R' THEN 'reversal'
+          WHEN 'N' THEN 'nsf'
+        END AS payment_effect,
+        _ingest_timestamp
+      FROM payment_file
+    dq:
+      - name: unknown_payment_effect
+        sql: |
+          SELECT *
+          FROM payment_typed
+          WHERE payment_id IS NULL
+             OR loan_id IS NULL
+             OR payment_effective_date IS NULL
+             OR payment_amount IS NULL
+             OR payment_effect IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_payment
+  - name: payment_ready
+    sql: |
+      SELECT
+        payment_id,
+        loan_id,
+        payment_effective_date,
+        payment_amount,
+        payment_principal_amount,
+        payment_interest_amount,
+        payment_fee_amount,
+        payment_effect
+      FROM (
+        SELECT
+          payment_typed.*,
+          row_number() OVER (
+            PARTITION BY payment_id
+            ORDER BY _ingest_timestamp DESC
+          ) AS _rn
+        FROM payment_typed
+      )
+      WHERE _rn = 1
+    dq:
+      - name: components_do_not_sum
+        sql: |
+          SELECT *
+          FROM payment_ready
+          WHERE payment_amount <>
+            payment_principal_amount + payment_interest_amount + payment_fee_amount
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_payment
+      - name: reversal_not_negative
+        sql: |
+          SELECT *
+          FROM payment_ready
+          WHERE payment_effect = 'reversal'
+            AND payment_amount >= 0
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_payment
+      - name: loan_not_in_snapshot
+        sql: |
+          SELECT payments.*
+          FROM payment_ready AS payments
+          LEFT JOIN loans
+            ON payments.loan_id = loans.loan_id
+          WHERE loans.loan_id IS NULL
+        expect: empty
+        on_fail: quarantine
+        quarantine: lending.quarantine.silver_payment
+sink:
+  name: publish_payment
+  target:
+    name: lending.silver.payment
+    location: abfss://silver@lendingexample.dfs.core.windows.net/payment
+    format: delta
+  sql: |
+    MERGE INTO lending.silver.payment AS t
+    USING payment_ready AS s
+    ON t.payment_id = s.payment_id
+    WHEN MATCHED THEN UPDATE SET *
+    WHEN NOT MATCHED THEN INSERT *
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.silver.payment', current_timestamp()

@@ -1,0 +1,17 @@
+# Disabled. The dictionary is draft and there is no landing source for joint obligors.
+model_version: 1
+id: pipeline.gold.borrower_role
+layer: gold
+enabled: false
+blocked_reason: >
+  dict.gold.borrower_role is draft. No landing file contains co-obligors
+  or guarantors. dict.gold.loan.member_id remains the primary obligor.
+verifies: dict.gold.borrower_role
+depends_on: [pipeline.gold.loan, pipeline.gold.member]
+dictionary_check:
+  ignore_columns: []
+sources: []
+pre: []
+steps: []
+sink: null
+post: []

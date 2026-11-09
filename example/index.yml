@@ -1,0 +1,41 @@
+model_version: 1
+contact: contacts/lending.yml
+glossary:
+  - glossary/member.yml
+  - glossary/product.yml
+  - glossary/loan.yml
+  - glossary/payment.yml
+dictionaries:
+  bronze:
+    - dictionaries/bronze/member.yml
+    - dictionaries/bronze/product.yml
+    - dictionaries/bronze/loan.yml
+    - dictionaries/bronze/payment.yml
+  silver:
+    - dictionaries/silver/member.yml
+    - dictionaries/silver/product.yml
+    - dictionaries/silver/loan.yml
+    - dictionaries/silver/payment.yml
+  gold:
+    - dictionaries/gold/member.yml
+    - dictionaries/gold/product.yml
+    - dictionaries/gold/loan.yml
+    - dictionaries/gold/payment.yml
+    - dictionaries/gold/borrower_role.yml
+pipelines:
+  bronze:
+    - pipelines/bronze/member.yml
+    - pipelines/bronze/product.yml
+    - pipelines/bronze/loan.yml
+    - pipelines/bronze/payment.yml
+  silver:
+    - pipelines/silver/member.yml
+    - pipelines/silver/product.yml
+    - pipelines/silver/loan.yml
+    - pipelines/silver/payment.yml
+  gold:
+    - pipelines/gold/member.yml
+    - pipelines/gold/product.yml
+    - pipelines/gold/loan.yml
+    - pipelines/gold/payment.yml
+    - pipelines/gold/borrower_role.yml

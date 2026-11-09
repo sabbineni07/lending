@@ -1,0 +1,79 @@
+model_version: 1
+id: dict.gold.member
+layer: gold
+entity: member
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per member_id per as_of_date
+primary_key: [member_id, as_of_date]
+population: Members published from silver for servicing and agent reads.
+description: >
+  Published member snapshot. is_active cites term.active_member.
+  No tax identifier is published.
+attributes:
+  - id: attr.gold.member.member_id
+    name: member_id
+    definition: Stable identifier of the member.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.member_id
+    representation: Carried from silver.member_id unchanged.
+    examples: [M100]
+
+  - id: attr.gold.member.as_of_date
+    name: as_of_date
+    definition: Business date this member snapshot describes.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Carried from silver.as_of_date unchanged.
+
+  - id: attr.gold.member.member_status
+    name: member_status
+    definition: Relationship status of the member on the as-of date.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [active, inactive, closed]
+    sensitivity: confidential
+    glossary_term: term.member_status
+    representation: Carried from silver.member_status unchanged.
+
+  - id: attr.gold.member.is_active
+    name: is_active
+    definition: Whether the member is an active member on the as-of date.
+    logical_type: indicator
+    physical_type: boolean
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.active_member
+    rule: true when member_status = active. Otherwise false.
+
+  - id: attr.gold.member.member_since_date
+    name: member_since_date
+    definition: Date the member relationship began.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.member_since_date
+    representation: Carried from silver.member_since_date unchanged.
+
+  - id: attr.gold.member.member_type
+    name: member_type
+    definition: Legal form of the member.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [individual, business]
+    sensitivity: internal
+    glossary_term: term.member_type
+    representation: Carried from silver.member_type unchanged.

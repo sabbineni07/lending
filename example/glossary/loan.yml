@@ -1,0 +1,158 @@
+model_version: 1
+domain: lending
+terms:
+  - id: term.loan_id
+    name: Loan identifier
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Stable identifier of a booked loan.
+    excludes:
+      - Applications that have not booked
+      - Member identifiers
+    related_terms: [term.primary_obligor, term.product_code]
+
+  - id: term.as_of_date
+    name: As-of date
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Business date a snapshot describes. It is not the time the file arrived
+      and not the date a payment was posted.
+    related_terms: [term.payment_effective_date]
+
+  - id: term.loan_status
+    name: Loan status
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Servicing status of a booked loan on the as-of date.
+    allowed_values: [current, delinquent, charged_off, paid_off]
+    excludes:
+      - A 30-day delinquency flag. That meaning is term.delinquent_30_plus.
+      - Member status
+    related_terms: [term.delinquent_loan, term.contractual_days_past_due]
+
+  - id: term.delinquent_loan
+    name: Delinquent loan
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [gold]
+    definition: A booked loan whose loan status is delinquent on the as-of date.
+    method: loan_status = delinquent
+    includes:
+      - Any contractual days past due greater than zero when status is delinquent
+    excludes:
+      - Current loans
+      - Charged-off loans
+      - Paid-off loans
+    related_terms: [term.loan_status, term.delinquent_30_plus]
+
+  - id: term.delinquent_30_plus
+    name: 30+ days delinquent loan
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [gold]
+    definition: >
+      A booked loan that is delinquent and whose contractual days past due
+      are 30 or more on the as-of date.
+    method: >
+      Contractual days past due, as carried from the servicing extract.
+      Recency days past due are outside this term.
+    includes:
+      - loan_status = delinquent and contractual days past due >= 30
+    excludes:
+      - Delinquent loans under 30 contractual days past due
+      - Charged-off loans
+      - Paid-off loans
+    related_terms: [term.delinquent_loan, term.contractual_days_past_due]
+
+  - id: term.principal_balance
+    name: Principal balance
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Unpaid principal of the loan on the as-of date, in USD.
+    excludes:
+      - Accrued interest
+      - Unpaid fees
+      - Escrow
+      - Original amount disbursed at booking
+    related_terms: [term.original_amount, term.payment_principal_amount]
+
+  - id: term.interest_rate
+    name: Interest rate
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Nominal annual interest rate on the note. The rate is the same concept
+      at every layer. Bronze stores it as a percent. Silver and gold store
+      it as a decimal fraction.
+    examples:
+      positive: An 8.99 percent note
+
+  - id: term.original_amount
+    name: Original amount
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Principal disbursed when the loan was booked, in USD.
+    excludes:
+      - Current unpaid principal
+      - Undrawn line-of-credit availability
+
+  - id: term.origination_date
+    name: Origination date
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Calendar date the loan was booked.
+    excludes:
+      - Application date
+      - As-of date
+      - Maturity date
+
+  - id: term.maturity_date
+    name: Maturity date
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: Calendar date the final contractual payment is due.
+
+  - id: term.contractual_days_past_due
+    name: Contractual days past due
+    status: approved
+    version: 1
+    owner: role.lending.data_steward
+    approved_on: 2026-11-09
+    certified_for: [bronze, silver, gold]
+    definition: >
+      Whole days past the contractual due date on the as-of date.
+      Zero when the loan is current.
+    method: Contractual method, taken from the servicing extract.
+    excludes:
+      - Recency days past due
+      - Charged-off and paid-off loans, which carry no days-past-due value
+    related_terms: [term.loan_status, term.delinquent_30_plus]

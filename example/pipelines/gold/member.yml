@@ -1,0 +1,60 @@
+model_version: 1
+id: pipeline.gold.member
+layer: gold
+enabled: true
+verifies: dict.gold.member
+depends_on: [pipeline.silver.member]
+dictionary_check:
+  ignore_columns: []
+sources:
+  - name: members
+    relation: lending.silver.member
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.gold
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: member_ready
+    sql: |
+      SELECT
+        member_id,
+        as_of_date,
+        member_status,
+        member_status = 'active' AS is_active,
+        member_since_date,
+        member_type
+      FROM members
+    dq:
+      - name: active_flag_disagrees
+        sql: |
+          SELECT *
+          FROM member_ready
+          WHERE is_active <> (member_status = 'active')
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_member
+  target:
+    name: lending.gold.member
+    location: abfss://gold@lendingexample.dfs.core.windows.net/member
+    format: delta
+    partition_by: [as_of_date]
+  sql: |
+    MERGE INTO lending.gold.member AS t
+    USING member_ready AS s
+    ON t.member_id = s.member_id
+    AND t.as_of_date = s.as_of_date
+    WHEN MATCHED THEN UPDATE SET *
+    WHEN NOT MATCHED THEN INSERT *
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.gold.member', current_timestamp()

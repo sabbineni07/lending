@@ -1,0 +1,117 @@
+model_version: 1
+id: dict.bronze.payment
+layer: bronze
+entity: payment
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+landing: landing/payments/
+grain: one row per PMT_NBR in the payment extract
+primary_key: [PMT_NBR]
+population: >
+  Payment events in the extract, including reversals and NSF events.
+  Each event has its own PMT_NBR.
+description: >
+  Payment events as landed. Amounts are signed text. Effect stays a source code.
+attributes:
+  - id: attr.bronze.payment.PMT_NBR
+    name: PMT_NBR
+    source_name: PMT_NBR
+    definition: Payment identifier as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_id
+    representation: File value, unchanged. A reversal does not reuse the original id.
+    examples: [PMT100, PMT100R]
+
+  - id: attr.bronze.payment.LOAN_NBR
+    name: LOAN_NBR
+    source_name: LOAN_NBR
+    definition: Loan the payment event applies to, as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    references: attr.bronze.loan.LOAN_NBR
+    examples: [L100]
+
+  - id: attr.bronze.payment.EFFECTIVE_DT
+    name: EFFECTIVE_DT
+    source_name: EFFECTIVE_DT
+    definition: Payment effective date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.payment_effective_date
+    representation: Date stored as text in the file.
+    examples: ["2026-03-15"]
+
+  - id: attr.bronze.payment.PMT_AMT
+    name: PMT_AMT
+    source_name: PMT_AMT
+    definition: Total payment amount as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_amount
+    representation: >
+      USD amount stored as text. Positive when money is applied.
+      Negative when the event undoes a prior application.
+    examples: ["250.00", "-250.00"]
+
+  - id: attr.bronze.payment.PRIN_AMT
+    name: PRIN_AMT
+    source_name: PRIN_AMT
+    definition: Principal portion as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_principal_amount
+    representation: USD amount stored as text. Sign follows PMT_AMT.
+    examples: ["190.00", "-190.00"]
+
+  - id: attr.bronze.payment.INT_AMT
+    name: INT_AMT
+    source_name: INT_AMT
+    definition: Interest portion as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_interest_amount
+    representation: USD amount stored as text. Sign follows PMT_AMT.
+    examples: ["50.00", "-50.00"]
+
+  - id: attr.bronze.payment.FEE_AMT
+    name: FEE_AMT
+    source_name: FEE_AMT
+    definition: Fee portion as received on the extract.
+    logical_type: money
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_fee_amount
+    representation: USD amount stored as text. Sign follows PMT_AMT.
+    examples: ["10.00", "0.00"]
+
+  - id: attr.bronze.payment.PMT_TYPE_CD
+    name: PMT_TYPE_CD
+    source_name: PMT_TYPE_CD
+    definition: Payment effect code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_effect
+    representation: >
+      File codes P, R, and N. Business values posted, reversal, and nsf
+      are defined on term.payment_effect. This column keeps the file code.
+    examples: [P, R, N]

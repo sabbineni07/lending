@@ -1,0 +1,69 @@
+model_version: 1
+id: dict.silver.member
+layer: silver
+entity: member
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per member_id per as_of_date
+primary_key: [member_id, as_of_date]
+population: Members conformed from the bronze member extract. Tax identifiers are dropped.
+description: >
+  Conformed member snapshot. term.ssn stays on bronze only, so this dictionary
+  has no tax identifier attribute.
+attributes:
+  - id: attr.silver.member.member_id
+    name: member_id
+    definition: Stable identifier of the member.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.member_id
+    representation: Trimmed MEMBER_NBR.
+    examples: [M100]
+
+  - id: attr.silver.member.as_of_date
+    name: as_of_date
+    definition: Business date this member snapshot describes.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: AS_OF_DT parsed as a date.
+
+  - id: attr.silver.member.member_status
+    name: member_status
+    definition: Relationship status of the member on the as-of date.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [active, inactive, closed]
+    sensitivity: confidential
+    glossary_term: term.member_status
+    representation: STATUS_CD A to active, I to inactive, C to closed. Unknown codes are rejected.
+
+  - id: attr.silver.member.member_since_date
+    name: member_since_date
+    definition: Date the member relationship began.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.member_since_date
+    representation: OPEN_DT parsed as a date.
+
+  - id: attr.silver.member.member_type
+    name: member_type
+    definition: Legal form of the member.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [individual, business]
+    sensitivity: internal
+    glossary_term: term.member_type
+    representation: MEMBER_TYPE I to individual, B to business. Unknown codes are rejected.

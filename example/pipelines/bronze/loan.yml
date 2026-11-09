@@ -1,0 +1,103 @@
+model_version: 1
+id: pipeline.bronze.loan
+layer: bronze
+enabled: true
+verifies: dict.bronze.loan
+depends_on: []
+dictionary_check:
+  ignore_columns: [_source_path, _file_checksum, _ingest_timestamp]
+sources:
+  - name: loan_landing
+    format: parquet
+    path: landing/loans/
+    attach_metadata: [_source_path, _file_checksum, _ingest_timestamp]
+pre:
+  - name: ensure_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.bronze
+  - name: ensure_audit_schema
+    sql: CREATE SCHEMA IF NOT EXISTS lending.audit
+  - name: ensure_audit
+    sql: |
+      CREATE TABLE IF NOT EXISTS lending.audit.pipeline_run (
+        pipeline_id STRING,
+        published_at TIMESTAMP
+      ) USING DELTA
+steps:
+  - name: loan_landed
+    sql: |
+      SELECT
+        cast(LOAN_NBR AS string) AS LOAN_NBR,
+        cast(AS_OF_DT AS string) AS AS_OF_DT,
+        cast(MEMBER_NBR AS string) AS MEMBER_NBR,
+        cast(PRODUCT_CD AS string) AS PRODUCT_CD,
+        cast(STATUS_CD AS string) AS STATUS_CD,
+        cast(PRIN_BAL AS string) AS PRIN_BAL,
+        cast(NOTE_RATE AS string) AS NOTE_RATE,
+        cast(ORIG_AMT AS string) AS ORIG_AMT,
+        cast(NOTE_DT AS string) AS NOTE_DT,
+        cast(MATURITY_DT AS string) AS MATURITY_DT,
+        cast(DPD_CNT AS string) AS DPD_CNT,
+        _source_path,
+        _file_checksum,
+        _ingest_timestamp
+      FROM loan_landing
+    dq:
+      - name: duplicate_loan_snapshot
+        sql: |
+          SELECT landed.*
+          FROM loan_landed AS landed
+          INNER JOIN (
+            SELECT LOAN_NBR, AS_OF_DT
+            FROM loan_landed
+            GROUP BY LOAN_NBR, AS_OF_DT
+            HAVING count(*) > 1
+          ) AS duplicated
+            ON landed.LOAN_NBR = duplicated.LOAN_NBR
+           AND landed.AS_OF_DT = duplicated.AS_OF_DT
+        expect: empty
+        on_fail: fail
+sink:
+  name: publish_loan
+  target:
+    name: lending.bronze.loan_file
+    location: abfss://bronze@lendingexample.dfs.core.windows.net/loan
+    format: delta
+    partition_by: [AS_OF_DT]
+  sql: |
+    INSERT INTO lending.bronze.loan_file (
+      LOAN_NBR,
+      AS_OF_DT,
+      MEMBER_NBR,
+      PRODUCT_CD,
+      STATUS_CD,
+      PRIN_BAL,
+      NOTE_RATE,
+      ORIG_AMT,
+      NOTE_DT,
+      MATURITY_DT,
+      DPD_CNT,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    )
+    SELECT
+      LOAN_NBR,
+      AS_OF_DT,
+      MEMBER_NBR,
+      PRODUCT_CD,
+      STATUS_CD,
+      PRIN_BAL,
+      NOTE_RATE,
+      ORIG_AMT,
+      NOTE_DT,
+      MATURITY_DT,
+      DPD_CNT,
+      _source_path,
+      _file_checksum,
+      _ingest_timestamp
+    FROM loan_landed
+post:
+  - name: record_run
+    sql: |
+      INSERT INTO lending.audit.pipeline_run (pipeline_id, published_at)
+      SELECT 'pipeline.bronze.loan', current_timestamp()

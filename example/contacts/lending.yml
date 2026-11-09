@@ -1,0 +1,24 @@
+id: contact.lending
+domain: lending
+description: >
+  Ownership for member, product, loan, and payment definitions.
+  Names below are roles for this example, not named individuals.
+roles:
+  - id: role.lending.business_owner
+    role: business_owner
+    name: Lending business owner
+    email: lending-owner@example.com
+    team: Consumer Lending
+    accountable_for: Business meaning of gold data products
+  - id: role.lending.data_steward
+    role: data_steward
+    name: Lending data steward
+    email: lending-steward@example.com
+    team: Data Governance
+    accountable_for: Glossary terms and approval of silver and gold dictionaries
+  - id: role.lending.technical_owner
+    role: technical_owner
+    name: Lending data platform
+    email: lending-platform@example.com
+    team: Data Platform
+    accountable_for: Landing files, Unity Catalog tables, and publish checks

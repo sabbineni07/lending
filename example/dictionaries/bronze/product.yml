@@ -1,0 +1,78 @@
+model_version: 1
+id: dict.bronze.product
+layer: bronze
+entity: product
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+landing: landing/products/
+grain: one row per PRODUCT_CD per AS_OF_DT in the product extract
+primary_key: [PRODUCT_CD, AS_OF_DT]
+population: Product reference rows included in the extract for that as-of date.
+description: Product reference extract as landed. Codes stay in source form.
+attributes:
+  - id: attr.bronze.product.PRODUCT_CD
+    name: PRODUCT_CD
+    source_name: PRODUCT_CD
+    definition: Product code as received on the extract.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_code
+    representation: File value, unchanged.
+    examples: [UNSEC01, AUTO02, LOC03]
+
+  - id: attr.bronze.product.AS_OF_DT
+    name: AS_OF_DT
+    source_name: AS_OF_DT
+    definition: As-of date as received on the extract.
+    logical_type: date
+    physical_type: string
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Date stored as text in the file.
+
+  - id: attr.bronze.product.PRODUCT_NM
+    name: PRODUCT_NM
+    source_name: PRODUCT_NM
+    definition: Product name as received on the extract.
+    logical_type: text
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_name
+    representation: File value, unchanged.
+    examples: [Unsecured installment]
+
+  - id: attr.bronze.product.PRODUCT_TYPE_CD
+    name: PRODUCT_TYPE_CD
+    source_name: PRODUCT_TYPE_CD
+    definition: Product type code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_type
+    representation: >
+      File codes UI, AS, and LC. Business values unsecured_installment,
+      auto_secured, and line_of_credit are defined on term.product_type.
+      This column keeps the file code.
+    examples: [UI, AS, LC]
+
+  - id: attr.bronze.product.PRODUCT_STATUS_CD
+    name: PRODUCT_STATUS_CD
+    source_name: PRODUCT_STATUS_CD
+    definition: Product status code as received on the extract.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_status
+    representation: >
+      File codes A and R. Business values active and retired are defined
+      on term.product_status. This column keeps the file code.
+    examples: [A, R]

@@ -1,0 +1,70 @@
+model_version: 1
+id: dict.gold.product
+layer: gold
+entity: product
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per product_code
+primary_key: [product_code]
+population: >
+  Latest silver snapshot for each product code. History remains on silver.
+description: >
+  Published product list. Attributes cite the same product terms as silver.
+  The grain is current state, so source_as_of_date records which snapshot
+  was selected. That column still cites term.as_of_date.
+attributes:
+  - id: attr.gold.product.product_code
+    name: product_code
+    definition: Stable identifier of the lending product.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_code
+    representation: Carried from the selected silver row.
+    examples: [UNSEC01]
+
+  - id: attr.gold.product.product_name
+    name: product_name
+    definition: Business name of the product.
+    logical_type: text
+    physical_type: string
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.product_name
+    representation: Carried from the selected silver row.
+
+  - id: attr.gold.product.product_type
+    name: product_type
+    definition: Family the product belongs to.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [unsecured_installment, auto_secured, line_of_credit]
+    sensitivity: internal
+    glossary_term: term.product_type
+    representation: Carried from the selected silver row.
+
+  - id: attr.gold.product.product_status
+    name: product_status
+    definition: Whether the institution currently offers the product.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [active, retired]
+    sensitivity: internal
+    glossary_term: term.product_status
+    representation: product_status from the silver row with the greatest as_of_date.
+
+  - id: attr.gold.product.source_as_of_date
+    name: source_as_of_date
+    definition: As-of date of the silver snapshot selected for this product.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.as_of_date
+    representation: Greatest silver.as_of_date for the product_code.

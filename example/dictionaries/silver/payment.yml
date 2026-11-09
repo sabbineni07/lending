@@ -1,0 +1,115 @@
+model_version: 1
+id: dict.silver.payment
+layer: silver
+entity: payment
+domain: lending
+status: approved
+version: 1
+contact: contact.lending
+grain: one row per payment_id
+primary_key: [payment_id]
+population: >
+  Payment events conformed from the bronze payment extract.
+  Posted payments, reversals, and NSF events are separate rows.
+concepts:
+  - term.payment_reversal
+description: >
+  Conformed payment events. Component amounts are decimals and keep their sign.
+  term.payment_reversal is a concept of this entity, expressed by
+  payment_effect = reversal rather than by a second amount column.
+attributes:
+  - id: attr.silver.payment.payment_id
+    name: payment_id
+    definition: Identifier of one payment event.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_id
+    representation: Trimmed PMT_NBR.
+    examples: [PMT100, PMT100R]
+
+  - id: attr.silver.payment.loan_id
+    name: loan_id
+    definition: Booked loan the event applies to.
+    logical_type: identifier
+    physical_type: string
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.loan_id
+    references: attr.silver.loan.loan_id
+    representation: Trimmed LOAN_NBR.
+    examples: [L100]
+
+  - id: attr.silver.payment.payment_effective_date
+    name: payment_effective_date
+    definition: Business date the event posts to the loan.
+    logical_type: date
+    physical_type: date
+    format: yyyy-MM-dd
+    nullable: false
+    sensitivity: internal
+    glossary_term: term.payment_effective_date
+    representation: EFFECTIVE_DT parsed as a date.
+
+  - id: attr.silver.payment.payment_amount
+    name: payment_amount
+    definition: Total amount of the event in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_amount
+    rule: >
+      Equals payment_principal_amount + payment_interest_amount +
+      payment_fee_amount.
+    representation: PMT_AMT parsed as a signed USD amount.
+    examples: ["250.00", "-250.00"]
+
+  - id: attr.silver.payment.payment_principal_amount
+    name: payment_principal_amount
+    definition: Portion applied to principal, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_principal_amount
+    representation: PRIN_AMT parsed as a signed USD amount.
+
+  - id: attr.silver.payment.payment_interest_amount
+    name: payment_interest_amount
+    definition: Portion applied to interest, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_interest_amount
+    representation: INT_AMT parsed as a signed USD amount.
+
+  - id: attr.silver.payment.payment_fee_amount
+    name: payment_fee_amount
+    definition: Portion applied to fees, in USD.
+    logical_type: money
+    physical_type: decimal(18,2)
+    unit: USD
+    nullable: false
+    sensitivity: confidential
+    glossary_term: term.payment_fee_amount
+    representation: FEE_AMT parsed as a signed USD amount.
+
+  - id: attr.silver.payment.payment_effect
+    name: payment_effect
+    definition: How the event changes the loan.
+    logical_type: code
+    physical_type: string
+    nullable: false
+    allowed_values: [posted, reversal, nsf]
+    sensitivity: confidential
+    glossary_term: term.payment_effect
+    representation: PMT_TYPE_CD P to posted, R to reversal, N to nsf. Unknown codes are rejected.
+    rule: >
+      A reversal row has payment_effect = reversal and a negative
+      payment_amount. The original posted row remains.
