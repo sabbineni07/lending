@@ -27,6 +27,7 @@ pre:
       ) USING DELTA
 steps:
   - name: loan_typed
+    mapping: sttm.silver.loan
     sql: |
       SELECT
         trim(LOAN_NBR) AS loan_id,
@@ -65,6 +66,7 @@ steps:
         on_fail: quarantine
         quarantine: lending.quarantine.silver_loan
   - name: loan_ranked
+    implements: rule.silver.loan.keep_latest
     function: lending.functions.dedupe_latest
     input: loan_typed
     args:
@@ -88,6 +90,7 @@ steps:
       FROM loan_ranked
     dq:
       - name: days_past_due_by_status
+        implements: rule.silver.loan.days_past_due
         sql: |
           SELECT *
           FROM loan_ready

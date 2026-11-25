@@ -26,6 +26,7 @@ pre:
       ) USING DELTA
 steps:
   - name: payment_typed
+    mapping: sttm.silver.payment
     sql: |
       SELECT
         trim(PMT_NBR) AS payment_id,
@@ -56,6 +57,7 @@ steps:
         on_fail: quarantine
         quarantine: lending.quarantine.silver_payment
   - name: payment_ready
+    implements: rule.silver.payment.keep_latest
     sql: |
       SELECT
         payment_id,
@@ -78,6 +80,7 @@ steps:
       WHERE _rn = 1
     dq:
       - name: components_do_not_sum
+        implements: rule.silver.payment.amount_parts
         sql: |
           SELECT *
           FROM payment_ready
@@ -87,6 +90,7 @@ steps:
         on_fail: quarantine
         quarantine: lending.quarantine.silver_payment
       - name: reversal_not_negative
+        implements: rule.silver.payment.reversal_sign
         sql: |
           SELECT *
           FROM payment_ready

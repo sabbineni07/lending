@@ -1,0 +1,44 @@
+model_version: 1
+id: sttm.bronze.payment
+load: file_move
+source:
+  kind: landing_file
+  path: landing/payments/
+target: dict.bronze.payment
+row_rule: >
+  Copy each landing column into the bronze column of the same name.
+  A reversal keeps its own payment number. Two rows with the same payment
+  number fail the load.
+columns:
+  - target: attr.bronze.payment.PMT_NBR
+    landing_column: PMT_NBR
+    transform: Copy the payment number as text.
+    expression: cast(PMT_NBR as string)
+  - target: attr.bronze.payment.LOAN_NBR
+    landing_column: LOAN_NBR
+    transform: Copy the loan number as text.
+    expression: cast(LOAN_NBR as string)
+  - target: attr.bronze.payment.EFFECTIVE_DT
+    landing_column: EFFECTIVE_DT
+    transform: Copy the effective date as text.
+    expression: cast(EFFECTIVE_DT as string)
+  - target: attr.bronze.payment.PMT_AMT
+    landing_column: PMT_AMT
+    transform: Copy the payment amount as text. A reversal is negative.
+    expression: cast(PMT_AMT as string)
+  - target: attr.bronze.payment.PRIN_AMT
+    landing_column: PRIN_AMT
+    transform: Copy the principal portion as text.
+    expression: cast(PRIN_AMT as string)
+  - target: attr.bronze.payment.INT_AMT
+    landing_column: INT_AMT
+    transform: Copy the interest portion as text.
+    expression: cast(INT_AMT as string)
+  - target: attr.bronze.payment.FEE_AMT
+    landing_column: FEE_AMT
+    transform: Copy the fee portion as text.
+    expression: cast(FEE_AMT as string)
+  - target: attr.bronze.payment.PMT_TYPE_CD
+    landing_column: PMT_TYPE_CD
+    transform: Copy the payment type code as text. P, R, and N stay codes.
+    expression: cast(PMT_TYPE_CD as string)

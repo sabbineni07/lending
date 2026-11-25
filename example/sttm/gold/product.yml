@@ -1,0 +1,28 @@
+model_version: 1
+id: sttm.gold.product
+source: dict.silver.product
+target: dict.gold.product
+rules:
+  - id: rule.gold.product.latest_snapshot
+    description: Publish one row per product. Keep the silver row with the latest as-of date.
+columns:
+  - target: attr.gold.product.product_code
+    sources: [attr.silver.product.product_code]
+    transform: Carry the product code.
+    expression: product_code
+  - target: attr.gold.product.product_name
+    sources: [attr.silver.product.product_name]
+    transform: Carry the product name.
+    expression: product_name
+  - target: attr.gold.product.product_type
+    sources: [attr.silver.product.product_type]
+    transform: Carry the product type.
+    expression: product_type
+  - target: attr.gold.product.product_status
+    sources: [attr.silver.product.product_status]
+    transform: Carry the product status from the latest silver row.
+    expression: product_status
+  - target: attr.gold.product.source_as_of_date
+    sources: [attr.silver.product.as_of_date]
+    transform: Record the as-of date of the silver row that was selected.
+    expression: as_of_date

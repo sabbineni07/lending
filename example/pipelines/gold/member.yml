@@ -22,6 +22,7 @@ pre:
       ) USING DELTA
 steps:
   - name: member_ready
+    mapping: sttm.gold.member
     sql: |
       SELECT
         member_id,

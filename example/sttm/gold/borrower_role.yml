@@ -1,0 +1,9 @@
+model_version: 1
+id: sttm.gold.borrower_role
+enabled: false
+blocked_reason: >
+  dict.gold.borrower_role is draft. No source columns exist for co-obligors
+  or guarantors.
+source: null
+target: dict.gold.borrower_role
+columns: []

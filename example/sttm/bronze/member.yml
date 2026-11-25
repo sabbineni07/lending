@@ -1,0 +1,35 @@
+model_version: 1
+id: sttm.bronze.member
+load: file_move
+source:
+  kind: landing_file
+  path: landing/members/
+target: dict.bronze.member
+row_rule: >
+  Copy each landing column into the bronze column of the same name.
+  Two rows with the same member and as-of date fail the load.
+columns:
+  - target: attr.bronze.member.MEMBER_NBR
+    landing_column: MEMBER_NBR
+    transform: Copy the member number as text.
+    expression: cast(MEMBER_NBR as string)
+  - target: attr.bronze.member.AS_OF_DT
+    landing_column: AS_OF_DT
+    transform: Copy the as-of date as text.
+    expression: cast(AS_OF_DT as string)
+  - target: attr.bronze.member.STATUS_CD
+    landing_column: STATUS_CD
+    transform: Copy the status code as text. A, I, and C stay codes.
+    expression: cast(STATUS_CD as string)
+  - target: attr.bronze.member.OPEN_DT
+    landing_column: OPEN_DT
+    transform: Copy the open date as text.
+    expression: cast(OPEN_DT as string)
+  - target: attr.bronze.member.MEMBER_TYPE
+    landing_column: MEMBER_TYPE
+    transform: Copy the member type code as text. I and B stay codes.
+    expression: cast(MEMBER_TYPE as string)
+  - target: attr.bronze.member.TAX_ID
+    landing_column: TAX_ID
+    transform: Copy the tax identifier as text. This column stops at bronze.
+    expression: cast(TAX_ID as string)

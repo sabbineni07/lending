@@ -39,3 +39,20 @@ pipelines:
     - pipelines/gold/loan.yml
     - pipelines/gold/payment.yml
     - pipelines/gold/borrower_role.yml
+sttm:
+  bronze:
+    - sttm/bronze/member.yml
+    - sttm/bronze/product.yml
+    - sttm/bronze/loan.yml
+    - sttm/bronze/payment.yml
+  silver:
+    - sttm/silver/member.yml
+    - sttm/silver/product.yml
+    - sttm/silver/loan.yml
+    - sttm/silver/payment.yml
+  gold:
+    - sttm/gold/member.yml
+    - sttm/gold/product.yml
+    - sttm/gold/loan.yml
+    - sttm/gold/payment.yml
+    - sttm/gold/borrower_role.yml

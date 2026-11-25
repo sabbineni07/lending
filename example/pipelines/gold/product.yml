@@ -22,14 +22,15 @@ pre:
         published_at TIMESTAMP
       ) USING DELTA
 steps:
-  - name: product_current
+  - name: product_latest
+    implements: rule.gold.product.latest_snapshot
     sql: |
       SELECT
         product_code,
         product_name,
         product_type,
         product_status,
-        as_of_date AS source_as_of_date
+        as_of_date
       FROM (
         SELECT
           product_history.*,
@@ -40,6 +41,16 @@ steps:
         FROM product_history
       )
       WHERE _rn = 1
+  - name: product_current
+    mapping: sttm.gold.product
+    sql: |
+      SELECT
+        product_code,
+        product_name,
+        product_type,
+        product_status,
+        as_of_date AS source_as_of_date
+      FROM product_latest
 sink:
   name: publish_product
   target:

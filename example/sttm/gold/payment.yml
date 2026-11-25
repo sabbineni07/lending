@@ -1,0 +1,40 @@
+model_version: 1
+id: sttm.gold.payment
+source: dict.silver.payment
+target: dict.gold.payment
+row_rule: >
+  Carry each silver payment event, including reversals and NSF events.
+  A reversal stays its own row with a negative amount.
+columns:
+  - target: attr.gold.payment.payment_id
+    sources: [attr.silver.payment.payment_id]
+    transform: Carry the payment identifier.
+    expression: payment_id
+  - target: attr.gold.payment.loan_id
+    sources: [attr.silver.payment.loan_id]
+    transform: Carry the loan identifier.
+    expression: loan_id
+  - target: attr.gold.payment.payment_effective_date
+    sources: [attr.silver.payment.payment_effective_date]
+    transform: Carry the effective date.
+    expression: payment_effective_date
+  - target: attr.gold.payment.payment_amount
+    sources: [attr.silver.payment.payment_amount]
+    transform: Carry the total amount.
+    expression: payment_amount
+  - target: attr.gold.payment.payment_principal_amount
+    sources: [attr.silver.payment.payment_principal_amount]
+    transform: Carry the principal portion.
+    expression: payment_principal_amount
+  - target: attr.gold.payment.payment_interest_amount
+    sources: [attr.silver.payment.payment_interest_amount]
+    transform: Carry the interest portion.
+    expression: payment_interest_amount
+  - target: attr.gold.payment.payment_fee_amount
+    sources: [attr.silver.payment.payment_fee_amount]
+    transform: Carry the fee portion.
+    expression: payment_fee_amount
+  - target: attr.gold.payment.payment_effect
+    sources: [attr.silver.payment.payment_effect]
+    transform: Carry the payment effect.
+    expression: payment_effect

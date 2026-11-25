@@ -25,6 +25,7 @@ pre:
       ) USING DELTA
 steps:
   - name: member_landed
+    mapping: sttm.bronze.member
     sql: |
       SELECT
         cast(MEMBER_NBR AS string) AS MEMBER_NBR,

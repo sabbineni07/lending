@@ -24,6 +24,7 @@ pre:
       ) USING DELTA
 steps:
   - name: product_landed
+    mapping: sttm.bronze.product
     sql: |
       SELECT
         cast(PRODUCT_CD AS string) AS PRODUCT_CD,

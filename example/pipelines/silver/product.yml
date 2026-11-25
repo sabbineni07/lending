@@ -24,6 +24,7 @@ pre:
       ) USING DELTA
 steps:
   - name: product_typed
+    mapping: sttm.silver.product
     sql: |
       SELECT
         trim(PRODUCT_CD) AS product_code,
@@ -54,6 +55,7 @@ steps:
         on_fail: quarantine
         quarantine: lending.quarantine.silver_product
   - name: product_ready
+    implements: rule.silver.product.keep_latest
     sql: |
       SELECT
         product_code,

@@ -1,0 +1,51 @@
+model_version: 1
+id: sttm.silver.payment
+source: dict.bronze.payment
+target: dict.silver.payment
+rules:
+  - id: rule.silver.payment.keep_latest
+    description: >
+      A reversal or an NSF keeps its own payment number. If the same payment
+      number arrives twice, keep the latest received row.
+  - id: rule.silver.payment.amount_parts
+    description: The payment amount equals principal plus interest plus fees.
+  - id: rule.silver.payment.reversal_sign
+    description: A reversal amount is negative.
+columns:
+  - target: attr.silver.payment.payment_id
+    sources: [attr.bronze.payment.PMT_NBR]
+    transform: Trim the payment number.
+    expression: trim(PMT_NBR)
+  - target: attr.silver.payment.loan_id
+    sources: [attr.bronze.payment.LOAN_NBR]
+    transform: Trim the loan number.
+    expression: trim(LOAN_NBR)
+  - target: attr.silver.payment.payment_effective_date
+    sources: [attr.bronze.payment.EFFECTIVE_DT]
+    transform: Parse the effective date.
+    expression: to_date(EFFECTIVE_DT, 'yyyy-MM-dd')
+  - target: attr.silver.payment.payment_amount
+    sources: [attr.bronze.payment.PMT_AMT]
+    transform: Parse the total amount. A reversal stays negative.
+    expression: cast(PMT_AMT as decimal(18,2))
+  - target: attr.silver.payment.payment_principal_amount
+    sources: [attr.bronze.payment.PRIN_AMT]
+    transform: Parse the principal portion.
+    expression: cast(PRIN_AMT as decimal(18,2))
+  - target: attr.silver.payment.payment_interest_amount
+    sources: [attr.bronze.payment.INT_AMT]
+    transform: Parse the interest portion.
+    expression: cast(INT_AMT as decimal(18,2))
+  - target: attr.silver.payment.payment_fee_amount
+    sources: [attr.bronze.payment.FEE_AMT]
+    transform: Parse the fee portion.
+    expression: cast(FEE_AMT as decimal(18,2))
+  - target: attr.silver.payment.payment_effect
+    sources: [attr.bronze.payment.PMT_TYPE_CD]
+    transform: P to posted, R to reversal, N to nsf. Any other code is rejected.
+    expression: >
+      case PMT_TYPE_CD
+        when 'P' then 'posted'
+        when 'R' then 'reversal'
+        when 'N' then 'nsf'
+      end

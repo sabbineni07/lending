@@ -1,0 +1,31 @@
+model_version: 1
+id: sttm.bronze.product
+load: file_move
+source:
+  kind: landing_file
+  path: landing/products/
+target: dict.bronze.product
+row_rule: >
+  Copy each landing column into the bronze column of the same name.
+  Two rows with the same product and as-of date fail the load.
+columns:
+  - target: attr.bronze.product.PRODUCT_CD
+    landing_column: PRODUCT_CD
+    transform: Copy the product code as text.
+    expression: cast(PRODUCT_CD as string)
+  - target: attr.bronze.product.AS_OF_DT
+    landing_column: AS_OF_DT
+    transform: Copy the as-of date as text.
+    expression: cast(AS_OF_DT as string)
+  - target: attr.bronze.product.PRODUCT_NM
+    landing_column: PRODUCT_NM
+    transform: Copy the product name as text.
+    expression: cast(PRODUCT_NM as string)
+  - target: attr.bronze.product.PRODUCT_TYPE_CD
+    landing_column: PRODUCT_TYPE_CD
+    transform: Copy the product type code as text. UI, AS, and LC stay codes.
+    expression: cast(PRODUCT_TYPE_CD as string)
+  - target: attr.bronze.product.PRODUCT_STATUS_CD
+    landing_column: PRODUCT_STATUS_CD
+    transform: Copy the product status code as text. A and R stay codes.
+    expression: cast(PRODUCT_STATUS_CD as string)

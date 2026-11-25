@@ -24,6 +24,7 @@ pre:
       ) USING DELTA
 steps:
   - name: loan_landed
+    mapping: sttm.bronze.loan
     sql: |
       SELECT
         cast(LOAN_NBR AS string) AS LOAN_NBR,

@@ -1,0 +1,64 @@
+model_version: 1
+id: sttm.silver.loan
+source: dict.bronze.loan
+target: dict.silver.loan
+rules:
+  - id: rule.silver.loan.keep_latest
+    description: If two rows share a loan and an as-of date, keep the latest received row.
+  - id: rule.silver.loan.days_past_due
+    description: >
+      Current loans have zero days past due. Delinquent loans have days past due
+      greater than zero. Charged-off and paid-off loans have no days-past-due value.
+columns:
+  - target: attr.silver.loan.loan_id
+    sources: [attr.bronze.loan.LOAN_NBR]
+    transform: Trim the loan number.
+    expression: trim(LOAN_NBR)
+  - target: attr.silver.loan.as_of_date
+    sources: [attr.bronze.loan.AS_OF_DT]
+    transform: Parse the as-of date.
+    expression: to_date(AS_OF_DT, 'yyyy-MM-dd')
+  - target: attr.silver.loan.member_id
+    sources: [attr.bronze.loan.MEMBER_NBR]
+    transform: Trim the primary member number. One member per loan.
+    expression: trim(MEMBER_NBR)
+  - target: attr.silver.loan.product_code
+    sources: [attr.bronze.loan.PRODUCT_CD]
+    transform: Trim the product code.
+    expression: trim(PRODUCT_CD)
+  - target: attr.silver.loan.loan_status
+    sources: [attr.bronze.loan.STATUS_CD]
+    transform: >
+      A to current, D to delinquent, C to charged_off, P to paid_off.
+      Any other code is rejected.
+    expression: >
+      case STATUS_CD
+        when 'A' then 'current'
+        when 'D' then 'delinquent'
+        when 'C' then 'charged_off'
+        when 'P' then 'paid_off'
+      end
+  - target: attr.silver.loan.principal_balance
+    sources: [attr.bronze.loan.PRIN_BAL]
+    transform: Parse unpaid principal as a USD amount.
+    expression: cast(PRIN_BAL as decimal(18,2))
+  - target: attr.silver.loan.interest_rate
+    sources: [attr.bronze.loan.NOTE_RATE]
+    transform: The file stores a percent. Divide by 100 to store the decimal rate.
+    expression: cast(cast(NOTE_RATE as decimal(9,4)) / 100 as decimal(7,6))
+  - target: attr.silver.loan.original_amount
+    sources: [attr.bronze.loan.ORIG_AMT]
+    transform: Parse the original disbursed principal as a USD amount.
+    expression: cast(ORIG_AMT as decimal(18,2))
+  - target: attr.silver.loan.origination_date
+    sources: [attr.bronze.loan.NOTE_DT]
+    transform: Parse the note date.
+    expression: to_date(NOTE_DT, 'yyyy-MM-dd')
+  - target: attr.silver.loan.maturity_date
+    sources: [attr.bronze.loan.MATURITY_DT]
+    transform: Parse the maturity date. Blank stays empty.
+    expression: to_date(MATURITY_DT, 'yyyy-MM-dd')
+  - target: attr.silver.loan.contractual_days_past_due
+    sources: [attr.bronze.loan.DPD_CNT]
+    transform: Parse the contractual days-past-due count.
+    expression: cast(DPD_CNT as int)

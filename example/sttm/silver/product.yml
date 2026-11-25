@@ -1,0 +1,39 @@
+model_version: 1
+id: sttm.silver.product
+source: dict.bronze.product
+target: dict.silver.product
+rules:
+  - id: rule.silver.product.keep_latest
+    description: If two rows share a product and an as-of date, keep the latest received row.
+columns:
+  - target: attr.silver.product.product_code
+    sources: [attr.bronze.product.PRODUCT_CD]
+    transform: Trim the product code.
+    expression: trim(PRODUCT_CD)
+  - target: attr.silver.product.as_of_date
+    sources: [attr.bronze.product.AS_OF_DT]
+    transform: Parse the as-of date.
+    expression: to_date(AS_OF_DT, 'yyyy-MM-dd')
+  - target: attr.silver.product.product_name
+    sources: [attr.bronze.product.PRODUCT_NM]
+    transform: Trim the product name.
+    expression: trim(PRODUCT_NM)
+  - target: attr.silver.product.product_type
+    sources: [attr.bronze.product.PRODUCT_TYPE_CD]
+    transform: >
+      UI to unsecured_installment, AS to auto_secured, LC to line_of_credit.
+      Any other code is rejected.
+    expression: >
+      case PRODUCT_TYPE_CD
+        when 'UI' then 'unsecured_installment'
+        when 'AS' then 'auto_secured'
+        when 'LC' then 'line_of_credit'
+      end
+  - target: attr.silver.product.product_status
+    sources: [attr.bronze.product.PRODUCT_STATUS_CD]
+    transform: A to active, R to retired. Any other code is rejected.
+    expression: >
+      case PRODUCT_STATUS_CD
+        when 'A' then 'active'
+        when 'R' then 'retired'
+      end

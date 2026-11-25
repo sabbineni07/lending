@@ -24,6 +24,7 @@ pre:
       ) USING DELTA
 steps:
   - name: member_typed
+    mapping: sttm.silver.member
     sql: |
       SELECT
         trim(MEMBER_NBR) AS member_id,
@@ -54,6 +55,7 @@ steps:
         on_fail: quarantine
         quarantine: lending.quarantine.silver_member
   - name: member_ready
+    implements: rule.silver.member.keep_latest
     sql: |
       SELECT
         member_id,

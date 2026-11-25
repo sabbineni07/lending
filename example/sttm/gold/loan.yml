@@ -1,0 +1,58 @@
+model_version: 1
+id: sttm.gold.loan
+source: dict.silver.loan
+target: dict.gold.loan
+columns:
+  - target: attr.gold.loan.loan_id
+    sources: [attr.silver.loan.loan_id]
+    transform: Carry the loan identifier.
+    expression: loan_id
+  - target: attr.gold.loan.as_of_date
+    sources: [attr.silver.loan.as_of_date]
+    transform: Carry the as-of date.
+    expression: as_of_date
+  - target: attr.gold.loan.member_id
+    sources: [attr.silver.loan.member_id]
+    transform: Carry the primary obligor.
+    expression: member_id
+  - target: attr.gold.loan.product_code
+    sources: [attr.silver.loan.product_code]
+    transform: Carry the product code.
+    expression: product_code
+  - target: attr.gold.loan.loan_status
+    sources: [attr.silver.loan.loan_status]
+    transform: Carry the loan status.
+    expression: loan_status
+  - target: attr.gold.loan.principal_balance
+    sources: [attr.silver.loan.principal_balance]
+    transform: Carry the unpaid principal.
+    expression: principal_balance
+  - target: attr.gold.loan.interest_rate
+    sources: [attr.silver.loan.interest_rate]
+    transform: Carry the decimal note rate.
+    expression: interest_rate
+  - target: attr.gold.loan.original_amount
+    sources: [attr.silver.loan.original_amount]
+    transform: Carry the original amount.
+    expression: original_amount
+  - target: attr.gold.loan.origination_date
+    sources: [attr.silver.loan.origination_date]
+    transform: Carry the origination date.
+    expression: origination_date
+  - target: attr.gold.loan.maturity_date
+    sources: [attr.silver.loan.maturity_date]
+    transform: Carry the maturity date.
+    expression: maturity_date
+  - target: attr.gold.loan.contractual_days_past_due
+    sources: [attr.silver.loan.contractual_days_past_due]
+    transform: Carry contractual days past due.
+    expression: contractual_days_past_due
+  - target: attr.gold.loan.is_delinquent
+    sources: [attr.silver.loan.loan_status]
+    transform: True when loan status is delinquent.
+    expression: coalesce(loan_status = 'delinquent', false)
+  - target: attr.gold.loan.is_delinquent_30_plus
+    sources: [attr.silver.loan.loan_status, attr.silver.loan.contractual_days_past_due]
+    transform: >
+      True when the loan is delinquent and contractual days past due are 30 or more.
+    expression: coalesce(loan_status = 'delinquent' and contractual_days_past_due >= 30, false)

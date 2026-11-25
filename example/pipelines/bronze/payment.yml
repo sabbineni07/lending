@@ -24,6 +24,7 @@ pre:
       ) USING DELTA
 steps:
   - name: payment_landed
+    mapping: sttm.bronze.payment
     sql: |
       SELECT
         cast(PMT_NBR AS string) AS PMT_NBR,

@@ -26,6 +26,7 @@ pre:
       ) USING DELTA
 steps:
   - name: payment_ready
+    mapping: sttm.gold.payment
     sql: |
       SELECT
         payment_id,

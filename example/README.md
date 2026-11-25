@@ -9,6 +9,7 @@ Business definitions and pipeline definitions for a small servicing book: member
 | `glossary/` | One set for the whole book | What does this business word mean? |
 | `contacts/lending.yml` | One list for the lending domain | Who is accountable? |
 | `dictionaries/<layer>/` | One file per entity per layer | How is that meaning stored here? |
+| `sttm/<layer>/` | One file per entity per layer | Which source column becomes which target column? |
 | `pipelines/<layer>/` | One file per entity per layer | How is the table loaded? |
 
 A term has one definition. Bronze, silver, and gold dictionaries cite that term and describe their own representation. A transformation that only changes encoding (file code `A`, conformed value `current`, rate stored as percent or as a decimal) keeps the same term. A transformation that creates a new meaning (a 30+ delinquency flag, a current product list taken from the latest snapshot) gets its own term or a different grain on the dictionary.
@@ -39,13 +40,21 @@ Before a table is published, the runner checks the dictionary named by the pipel
 - Primary-key columns are unique. `nullable: false` and `allowed_values` hold.
 - Every `glossary_term` and every entry in `concepts` exists, is `approved`, and lists this layer in `certified_for`.
 
+## STTM
+
+`sttm/` is the column-by-column source-to-target mapping an analyst can read. Each row names the target attribute, the source attribute, a short transform sentence, and the expression used in the pipeline SQL. Types, nullability, and sensitivity stay on the dictionary the row cites.
+
+A `rules` entry states a business rule in plain language. It does not name a Spark function. The pipeline step that carries the rule out sets `implements` to that rule id. The engineer reads the description and chooses the implementation. For `rule.silver.loan.keep_latest` the choice is `lending.functions.dedupe_latest`. The same kind of rule on member, product, and payment is carried out with SQL instead.
+
+Bronze mappings are file moves from the landing path onto the bronze dictionary. Silver mappings convert bronze codes and amounts. Gold mappings carry silver columns forward and add derived columns such as `is_delinquent_30_plus`. `sttm/gold/borrower_role.yml` is disabled because that dictionary is still draft.
+
 ## Pipelines
 
-Bronze, silver, and gold use the same keys. A file source has a path. A table source has a relation. Names of sources and steps are temp views. A transform step is one `SELECT`, or a function that returns a DataFrame registered under the step name. The next step queries that name. Optional `dq` on a step returns the bad rows. `expect: empty` and `on_fail: quarantine` drop them from the view. `on_fail: fail` stops the pipeline.
+Bronze, silver, and gold use the same keys. The runner executes each step `sql` and registers the result as a temp view under the step name. `mapping` names the STTM that documents that statement. Later steps can be another SQL statement or a function. Optional `dq` on a step returns the bad rows. `expect: empty` and `on_fail: quarantine` drop them from the view. `on_fail: fail` stops the pipeline.
 
 `sink.sql` is one `INSERT`, `INSERT OVERWRITE`, or `MERGE` into `target.name`. `target.location` makes that table external. Pre steps run first. Post steps run after the dictionary check succeeds. `depends_on` orders pipelines when a source is another pipeline's table.
 
-`pipelines/silver/loan.yml` is the fullest example: two sources, a function step, and step DQ. `pipelines/gold/product.yml` is the grain change, via `INSERT OVERWRITE`. `pipelines/gold/borrower_role.yml` is disabled.
+`pipelines/silver/loan.yml` is the fullest example: it applies `sttm.silver.loan`, then calls `lending.functions.dedupe_latest`, then runs step DQ. `pipelines/gold/product.yml` selects the latest silver row in SQL, then applies `sttm.gold.product`. `pipelines/gold/borrower_role.yml` is disabled.
 
 ## Gaps
 
@@ -71,6 +80,8 @@ example/
   glossary/{member,product,loan,payment}.yml
   dictionaries/{bronze,silver,gold}/{member,product,loan,payment}.yml
   dictionaries/gold/borrower_role.yml
+  sttm/{bronze,silver,gold}/{member,product,loan,payment}.yml
+  sttm/gold/borrower_role.yml
   pipelines/{bronze,silver,gold}/{member,product,loan,payment}.yml
   pipelines/gold/borrower_role.yml
   index.yml

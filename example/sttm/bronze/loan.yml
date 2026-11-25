@@ -1,0 +1,55 @@
+model_version: 1
+id: sttm.bronze.loan
+load: file_move
+source:
+  kind: landing_file
+  path: landing/loans/
+target: dict.bronze.loan
+row_rule: >
+  Copy each landing column into the bronze column of the same name.
+  Two rows with the same loan and as-of date fail the load.
+columns:
+  - target: attr.bronze.loan.LOAN_NBR
+    landing_column: LOAN_NBR
+    transform: Copy the loan number as text.
+    expression: cast(LOAN_NBR as string)
+  - target: attr.bronze.loan.AS_OF_DT
+    landing_column: AS_OF_DT
+    transform: Copy the as-of date as text.
+    expression: cast(AS_OF_DT as string)
+  - target: attr.bronze.loan.MEMBER_NBR
+    landing_column: MEMBER_NBR
+    transform: Copy the primary member number as text.
+    expression: cast(MEMBER_NBR as string)
+  - target: attr.bronze.loan.PRODUCT_CD
+    landing_column: PRODUCT_CD
+    transform: Copy the product code as text.
+    expression: cast(PRODUCT_CD as string)
+  - target: attr.bronze.loan.STATUS_CD
+    landing_column: STATUS_CD
+    transform: Copy the status code as text. A, D, C, and P stay codes.
+    expression: cast(STATUS_CD as string)
+  - target: attr.bronze.loan.PRIN_BAL
+    landing_column: PRIN_BAL
+    transform: Copy the principal balance as text.
+    expression: cast(PRIN_BAL as string)
+  - target: attr.bronze.loan.NOTE_RATE
+    landing_column: NOTE_RATE
+    transform: Copy the note rate as text. The file value is a percent.
+    expression: cast(NOTE_RATE as string)
+  - target: attr.bronze.loan.ORIG_AMT
+    landing_column: ORIG_AMT
+    transform: Copy the original amount as text.
+    expression: cast(ORIG_AMT as string)
+  - target: attr.bronze.loan.NOTE_DT
+    landing_column: NOTE_DT
+    transform: Copy the note date as text.
+    expression: cast(NOTE_DT as string)
+  - target: attr.bronze.loan.MATURITY_DT
+    landing_column: MATURITY_DT
+    transform: Copy the maturity date as text.
+    expression: cast(MATURITY_DT as string)
+  - target: attr.bronze.loan.DPD_CNT
+    landing_column: DPD_CNT
+    transform: Copy contractual days past due as text.
+    expression: cast(DPD_CNT as string)

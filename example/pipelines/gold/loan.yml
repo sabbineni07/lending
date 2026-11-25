@@ -28,6 +28,7 @@ pre:
       ) USING DELTA
 steps:
   - name: loan_ready
+    mapping: sttm.gold.loan
     sql: |
       SELECT
         loan_id,

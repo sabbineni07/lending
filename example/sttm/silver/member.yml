@@ -1,0 +1,37 @@
+model_version: 1
+id: sttm.silver.member
+source: dict.bronze.member
+target: dict.silver.member
+rules:
+  - id: rule.silver.member.keep_latest
+    description: If two rows share a member and an as-of date, keep the latest received row.
+columns:
+  - target: attr.silver.member.member_id
+    sources: [attr.bronze.member.MEMBER_NBR]
+    transform: Trim the member number.
+    expression: trim(MEMBER_NBR)
+  - target: attr.silver.member.as_of_date
+    sources: [attr.bronze.member.AS_OF_DT]
+    transform: Parse the as-of date.
+    expression: to_date(AS_OF_DT, 'yyyy-MM-dd')
+  - target: attr.silver.member.member_status
+    sources: [attr.bronze.member.STATUS_CD]
+    transform: A to active, I to inactive, C to closed. Any other code is rejected.
+    expression: >
+      case STATUS_CD
+        when 'A' then 'active'
+        when 'I' then 'inactive'
+        when 'C' then 'closed'
+      end
+  - target: attr.silver.member.member_since_date
+    sources: [attr.bronze.member.OPEN_DT]
+    transform: Parse the member open date.
+    expression: to_date(OPEN_DT, 'yyyy-MM-dd')
+  - target: attr.silver.member.member_type
+    sources: [attr.bronze.member.MEMBER_TYPE]
+    transform: I to individual, B to business. Any other code is rejected.
+    expression: >
+      case MEMBER_TYPE
+        when 'I' then 'individual'
+        when 'B' then 'business'
+      end

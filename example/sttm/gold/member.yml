@@ -1,0 +1,29 @@
+model_version: 1
+id: sttm.gold.member
+source: dict.silver.member
+target: dict.gold.member
+columns:
+  - target: attr.gold.member.member_id
+    sources: [attr.silver.member.member_id]
+    transform: Carry the member identifier.
+    expression: member_id
+  - target: attr.gold.member.as_of_date
+    sources: [attr.silver.member.as_of_date]
+    transform: Carry the as-of date.
+    expression: as_of_date
+  - target: attr.gold.member.member_status
+    sources: [attr.silver.member.member_status]
+    transform: Carry the member status.
+    expression: member_status
+  - target: attr.gold.member.is_active
+    sources: [attr.silver.member.member_status]
+    transform: True when member status is active.
+    expression: member_status = 'active'
+  - target: attr.gold.member.member_since_date
+    sources: [attr.silver.member.member_since_date]
+    transform: Carry the member since date.
+    expression: member_since_date
+  - target: attr.gold.member.member_type
+    sources: [attr.silver.member.member_type]
+    transform: Carry the member type.
+    expression: member_type
